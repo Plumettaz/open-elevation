@@ -1,5 +1,6 @@
 FROM osgeo/gdal:ubuntu-small-3.6.3
 
+RUN ln -fs /usr/share/zoneinfo/UTC /etc/localtime
 RUN apt-get update
 RUN apt-get install -y libspatialindex-dev unar bc python3-pip wget
 
