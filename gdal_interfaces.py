@@ -54,6 +54,11 @@ class GDALInterface(object):
     def print_statistics(self):
         print(self.src.GetRasterBand(1).GetStatistics(True, True))
 
+    def bilinear_interpolation(self, x, y, z00, z01, z10, z11):
+        def linear_interpolation(x, z0, z1):
+            return z0 * x + z1 * (1 - x)
+
+        return linear_interpolation(y, linear_interpolation(x, z00, z10), linear_interpolation(x, z01, z11))
 
     def lookup(self, lat, lon):
         try:
@@ -65,13 +70,24 @@ class GDALInterface(object):
             u = xgeo - self.geo_transform_inv[0]
             v = ygeo - self.geo_transform_inv[3]
             # FIXME this int() is probably bad idea, there should be half cell size thing needed
-            xpix = int(self.geo_transform_inv[1] * u + self.geo_transform_inv[2] * v)
-            ylin = int(self.geo_transform_inv[4] * u + self.geo_transform_inv[5] * v)
+            xpix = self.geo_transform_inv[1] * u + self.geo_transform_inv[2] * v
+            ylin = self.geo_transform_inv[4] * u + self.geo_transform_inv[5] * v
+            xpix_int = int(xpix)
+            ylin_int = int(ylin)
 
             # look the value up
-            v = self.points_array[ylin, xpix]
+            z00 = self.points_array[ylin_int,     xpix_int]
+            z10 = self.points_array[ylin_int,     xpix_int - 1]
+            z01 = self.points_array[ylin_int - 1, xpix_int]
+            z11 = self.points_array[ylin_int - 1, xpix_int - 1]
 
-            return v if v != -32768 else self.SEA_LEVEL
+            # handle missing elevation
+            z00 = z00 if z00 != -32768 else self.SEA_LEVEL
+            z10 = z10 if z10 != -32768 else self.SEA_LEVEL
+            z01 = z01 if z01 != -32768 else self.SEA_LEVEL
+            z11 = z11 if z11 != -32768 else self.SEA_LEVEL
+
+            return self.bilinear_interpolation(xpix - xpix_int, ylin - ylin_int, z00, z01, z10, z11)
         except Exception as e:
             print(e)
             return self.SEA_LEVEL
