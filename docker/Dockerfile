@@ -1,4 +1,4 @@
-FROM osgeo/gdal:alpine-small-3.6.3
+FROM osgeo/gdal:ubuntu-small-3.6.3
 
 RUN apt-get update
 RUN apt-get install -y libspatialindex-dev unar bc python3-pip wget
